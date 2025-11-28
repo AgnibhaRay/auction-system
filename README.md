@@ -346,7 +346,7 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## License
 
-MIT License - feel free to use this project for personal and commercial purposes.
+Private Licence- Owned and Managed by Agnibha Ray(CTO, Hand2Mart), unfair use for profit generation will result in serious legal actions.
 
 ## Author
 

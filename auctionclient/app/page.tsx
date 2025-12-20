@@ -130,7 +130,7 @@ export default function AuctionPage() {
 
   // WebSocket Connection Logic
   useEffect(() => {
-    const wsUrl = "ws://localhost:8080/ws"; 
+    const wsUrl = "ws://localhost:8081/ws"; 
     
     let ws: WebSocket;
     const connect = () => {

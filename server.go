@@ -23,7 +23,6 @@ const (
 	RedisPassword = "Y1IUIUF34LAt4hvSxlB6lseKNW7tRqkd"
 
 	// Postgres (Persistence Layer)
-	// Format: "postgres://user:password@host:port/dbname?sslmode=disable"
 	PostgresConnStr = "postgres://avnadmin:AVNS_vmO3jLRgWQVfsKzrnB2@pg-3272af03-agnibharay-125c.l.aivencloud.com:28257/defaultdb?sslmode=require"
 )
 
@@ -171,9 +170,27 @@ func subscribeToRedis() {
 	}
 }
 
+// Direct broadcast to all connected clients (faster than pub/sub for single server)
+func broadcastDirect(msg Message) {
+	jsonMsg, _ := json.Marshal(msg)
+	clientsMu.Lock()
+	for client := range clients {
+		client.WriteMessage(websocket.TextMessage, jsonMsg)
+	}
+	clientsMu.Unlock()
+}
+
 func broadcastToRedis(msg Message) {
 	jsonMsg, _ := json.Marshal(msg)
 	rdb.Publish(ctx, ChannelUpdates, jsonMsg)
+}
+
+// Broadcast to both local clients (instant) AND Redis (for other server instances)
+func broadcastAll(msg Message) {
+	// 1. Instant local broadcast
+	broadcastDirect(msg)
+	// 2. Redis pub/sub for other server instances (async)
+	go broadcastToRedis(msg)
 }
 
 func runTimer() {
@@ -188,10 +205,11 @@ func runTimer() {
 			item, _ := rdb.Get(ctx, KeyItem).Result()
 
 			if timeLeft > 0 {
-				broadcastToRedis(Message{Type: "update", ItemName: item, Amount: price, Username: bidder, TimeLeft: int(timeLeft)})
+				// Broadcast to local clients instantly + Redis for other servers
+				broadcastAll(Message{Type: "update", ItemName: item, Amount: price, Username: bidder, TimeLeft: int(timeLeft)})
 			} else {
 				rdb.Set(ctx, KeyRunning, false, 0)
-				broadcastToRedis(Message{Type: "end", ItemName: item, Amount: price, Username: bidder, TimeLeft: 0, Content: "SOLD!"})
+				broadcastAll(Message{Type: "end", ItemName: item, Amount: price, Username: bidder, TimeLeft: 0, Content: "SOLD!"})
 			}
 		}
 	}
@@ -238,7 +256,8 @@ func startAuction(msg Message) {
 	rdb.Set(ctx, KeyBidder, "House", 0)
 	rdb.Set(ctx, KeyTime, 60, 0)
 	rdb.Set(ctx, KeyRunning, true, 0)
-	broadcastToRedis(Message{Type: "update", ItemName: msg.ItemName, Amount: msg.Amount, Username: "House", TimeLeft: 60})
+	// Instant local + Redis for other servers
+	broadcastAll(Message{Type: "update", ItemName: msg.ItemName, Amount: msg.Amount, Username: "House", TimeLeft: 60})
 }
 
 func processBid(msg Message) {
@@ -259,15 +278,14 @@ func processBid(msg Message) {
 	// 2. If Redis accepted the bid...
 	if result == 1 {
 		// 3. ...Trigger the SQL Write in the BACKGROUND (Goroutine)
-		// This makes the system extremely fast because we don't wait for SQL
-		//Implement Kafka if necessary for better durability
-		//Implemet ORM for production level code
 		go saveBidToDB(msg.ItemName, msg.Username, msg.Amount)
 
 		timeLeft, _ := rdb.Get(ctx, KeyTime).Int()
 		if timeLeft < 10 {
 			rdb.IncrBy(ctx, KeyTime, 10)
+			timeLeft += 10
 		}
-		broadcastToRedis(Message{Type: "update", ItemName: msg.ItemName, Amount: msg.Amount, Username: msg.Username, TimeLeft: timeLeft})
+		// Instant local broadcast + Redis pub/sub for other server instances
+		broadcastAll(Message{Type: "update", ItemName: msg.ItemName, Amount: msg.Amount, Username: msg.Username, TimeLeft: timeLeft})
 	}
 }

@@ -19,8 +19,8 @@ import (
 // --- CONFIGURATION ---
 const (
 	// Redis (Speed Layer)
-	RedisAddr     = "redis-15534.c276.us-east-1-2.ec2.cloud.redislabs.com:15534"
-	RedisPassword = "Y1IUIUF34LAt4hvSxlB6lseKNW7tRqkd"
+	RedisAddr     = "redis-14849.c90.us-east-1-3.ec2.cloud.redislabs.com:14849"
+	RedisPassword = "hS8ktKT1yDb6pHDVuWx1gtciZbcEBvAw"
 
 	// Postgres (Persistence Layer)
 	PostgresConnStr = "postgres://avnadmin:AVNS_vmO3jLRgWQVfsKzrnB2@pg-3272af03-agnibharay-125c.l.aivencloud.com:28257/defaultdb?sslmode=require"

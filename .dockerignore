@@ -1,0 +1,26 @@
+# Client application (separate build)
+auctionclient
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE
+.idea
+.vscode
+
+# Test files
+*_test.go
+*.test
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# OS files
+.DS_Store

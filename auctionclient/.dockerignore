@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+
+# Build
+.next
+out
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Misc
+.DS_Store
+*.md

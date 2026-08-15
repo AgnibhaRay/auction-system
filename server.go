@@ -2,29 +2,62 @@ package main
 
 import (
 	"context"
-	"database/sql" // <--- NEW
+	"crypto/tls"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
-	_ "github.com/lib/pq" // <--- NEW: Postgres Driver
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 )
 
-// --- CONFIGURATION ---
-const (
-	// Redis (Speed Layer)
-	RedisAddr     = "redis-14849.c90.us-east-1-3.ec2.cloud.redislabs.com:14849"
-	RedisPassword = "hS8ktKT1yDb6pHDVuWx1gtciZbcEBvAw"
+// --- CONFIGURATION (from environment variables) ---
 
-	// Postgres (Persistence Layer)
-	PostgresConnStr = "postgres://avnadmin:AVNS_vmO3jLRgWQVfsKzrnB2@pg-3272af03-agnibharay-125c.l.aivencloud.com:28257/defaultdb?sslmode=require"
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value == "1" || strings.EqualFold(value, "true") || strings.EqualFold(value, "yes")
+}
+
+var (
+	RedisAddr       string
+	RedisUsername   string
+	RedisPassword   string
+	RedisTLS        bool
+	PostgresConnStr string
 )
+
+func init() {
+	_ = godotenv.Load()
+	_ = godotenv.Load("../.env")
+
+	RedisAddr = getEnvOrDefault("REDIS_ADDR", "localhost:6379")
+	RedisUsername = getEnvOrDefault("REDIS_USERNAME", "")
+	RedisPassword = os.Getenv("REDIS_PASSWORD")
+	RedisTLS = getEnvBool("REDIS_TLS", false)
+	PostgresConnStr = os.Getenv("POSTGRES_CONN_STR")
+	if PostgresConnStr == "" {
+		PostgresConnStr = os.Getenv("AUCTION_POSTGRES_CONN_STR")
+	}
+}
 
 // --- GLOBAL VARIABLES ---
 var ctx = context.Background()
@@ -81,11 +114,16 @@ func main() {
 // --- DATABASE CONNECTIONS ---
 
 func initRedis() {
-	rdb = redis.NewClient(&redis.Options{
+	opts := &redis.Options{
 		Addr:     RedisAddr,
+		Username: RedisUsername,
 		Password: RedisPassword,
 		DB:       0,
-	})
+	}
+	if RedisTLS {
+		opts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	rdb = redis.NewClient(opts)
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
 		log.Fatalf("❌ Redis Error: %v", err)

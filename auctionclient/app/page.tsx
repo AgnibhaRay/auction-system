@@ -5,8 +5,9 @@ import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Car, User, Settings, Wifi, WifiOff, Crown, Clock, DollarSign, Sparkles, Volume2, Loader2, Image as ImageIcon, Search, AlertCircle } from 'lucide-react';
 
-// --- CONFIG ---
-const apiKey = "AIzaSyAVjM_AFdx_YjQqKCxjhlWgw4mgfhqrbN0"; // REPLACE THIS WITH YOUR GEMINI API KEY
+// --- CONFIG (from environment variables) ---
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8081/ws";
 
 // --- TYPES ---
 
@@ -130,8 +131,6 @@ export default function AuctionPage() {
 
   // WebSocket Connection Logic
   useEffect(() => {
-    const wsUrl = "ws://localhost:8081/ws"; 
-    
     let ws: WebSocket;
     const connect = () => {
       ws = new WebSocket(wsUrl);
